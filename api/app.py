@@ -8,9 +8,9 @@ from datetime import datetime
 from textblob import TextBlob
 import nltk
 import uuid
-from fragrance_mapping import FragranceMapper
-from conversation_state_machine import ConversationStateMachine
-from user_database import UserDatabase
+from utils.fragrance_mapping import FragranceMapper
+from state_machine.conversation_state_machine import ConversationStateMachine
+from db.user_database import UserDatabase
 
 # Download required NLTK data
 try:
@@ -48,7 +48,7 @@ def setup_logging():
 # Khởi tạo logging
 app_logger, api_logger, state_logger, db_logger = setup_logging()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates')))
 CORS(app)
 
 # Initialize components

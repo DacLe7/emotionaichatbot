@@ -261,4 +261,39 @@ MIT License - Xem file LICENSE để biết thêm chi tiết.
 
 ---
 
-**Lưu ý**: Đây là dự án demo cho môn học. Trong môi trường production, cần bổ sung thêm các biện pháp bảo mật và tối ưu hóa hiệu suất. 
+**Lưu ý**: Đây là dự án demo cho môn học. Trong môi trường production, cần bổ sung thêm các biện pháp bảo mật và tối ưu hóa hiệu suất.
+
+## Hướng dẫn chuẩn bị và deploy lên Render
+
+### 1. Chuẩn bị trước khi đẩy lên GitHub
+- Đảm bảo đã có các file sau ở thư mục gốc:
+  - `requirements.txt` (đã có)
+  - `Procfile` (đã tạo)
+  - Thư mục `api/` chứa `app.py`
+  - Thư mục `templates/` chứa `index.html`
+  - Các thư mục code khác (`db/`, `utils/`, ...)
+
+### 2. Đẩy code lên GitHub
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/<ten-github-cua-ban>/<ten-repo>.git
+git push -u origin main
+```
+
+### 3. Deploy lên Render
+1. Đăng nhập [https://render.com](https://render.com)
+2. Chọn **New Web Service** > Kết nối GitHub > Chọn repo vừa push
+3. Build Command: *(để trống, Render sẽ tự động)*
+4. Start Command: `gunicorn api.app:app`
+5. Nhấn **Create Web Service** và chờ build xong
+6. Lấy link public gửi cho bạn bè test!
+
+### 4. Lưu ý
+- Nếu app cần lưu dữ liệu lâu dài, nên dùng database cloud (PostgreSQL, MongoDB, ...)
+- Nếu gặp lỗi, kiểm tra log trên Render để sửa.
+
+---
+Chúc bạn deploy thành công! 
