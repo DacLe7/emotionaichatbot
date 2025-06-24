@@ -7,4 +7,4 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["gunicorn", "api.app:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "api.app:app"] 
