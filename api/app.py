@@ -8,9 +8,14 @@ from datetime import datetime
 from textblob import TextBlob
 import nltk
 import uuid
+from dotenv import load_dotenv
 from utils.fragrance_mapping import FragranceMapper
 from state_machine.conversation_state_machine import ConversationStateMachine
 from db.user_database import UserDatabase
+from db.postgres_database import PostgresDatabase
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Download required NLTK data
 try:
@@ -52,7 +57,7 @@ app = Flask(__name__, template_folder=os.path.abspath(os.path.join(os.path.dirna
 CORS(app)
 
 # Initialize components
-fragrance_mapper = FragranceMapper()
+fragrance_db = PostgresDatabase()
 user_db = UserDatabase()
 
 # Store active conversations (in production, use Redis or database)
@@ -137,22 +142,28 @@ def get_fragrance_recommendation(sentiment, confidence, user_id=None):
     if user_id:
         personalized_fragrance = user_db.get_personalized_suggestion(user_id, sentiment)
         if personalized_fragrance:
-            # Tạo recommendation với fragrance đã biết user thích
-            all_fragrances = fragrance_mapper.get_all_fragrances()
-            emotion_fragrances = all_fragrances.get(sentiment, {}).get('fragrances', [])
-            
+            emotion_fragrances = fragrance_db.get_fragrances(sentiment)
             for fragrance in emotion_fragrances:
-                if fragrance['name'] == personalized_fragrance:
-                    # Trả về recommendation với fragrance user đã thích
+                if isinstance(fragrance, dict) and fragrance.get('name') == personalized_fragrance:
                     return {
                         'fragrance': fragrance,
                         'emotion_name': sentiment,
                         'reason': f"Bạn đã thích mùi này trước đó cho cảm xúc {sentiment}",
                         'personalized': True
                     }
-    
     # Nếu không có gợi ý cá nhân hóa, dùng logic mặc định
-    return fragrance_mapper.get_fragrance_recommendation(sentiment, confidence)
+    emotion_fragrances = fragrance_db.get_fragrances(sentiment)
+    import random
+    if emotion_fragrances:
+        selected_fragrance = random.choice(emotion_fragrances)
+        return {
+            'fragrance': selected_fragrance,
+            'emotion_name': sentiment,
+            'reason': f"Gợi ý dựa trên cảm xúc {sentiment}",
+            'personalized': False
+        }
+    else:
+        return None
 
 def save_conversation(user_id, session_id, message, response, sentiment, confidence, fragrance_rec=None, conversation_state=None):
     """Lưu cuộc trò chuyện vào database"""
@@ -356,9 +367,8 @@ def get_user_preferences(user_id):
 def get_fragrances():
     """Lấy tất cả thông tin nến thơm"""
     try:
-        return jsonify({
-            'fragrances': fragrance_mapper.get_all_fragrances()
-        })
+        all_fragrances = fragrance_db.get_fragrances()
+        return jsonify({'fragrances': all_fragrances})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -450,6 +460,24 @@ def get_logs():
     except Exception as e:
         api_logger.error(f"❌ Error reading logs: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/fragrance/add', methods=['POST'])
+def add_fragrance():
+    """Thêm fragrance mới vào database (admin)"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        description = data.get('description')
+        emotion = data.get('emotion')
+        image_url = data.get('image_url')
+        if not all([name, emotion]):
+            return jsonify({'error': 'Thiếu tên hoặc cảm xúc'}), 400
+        new_fragrance = fragrance_db.add_fragrance(name, description, emotion, image_url)
+        return jsonify({'fragrance': new_fragrance}), 201
+    except Exception as e:
+        import traceback
+        api_logger.error(f"❌ Error in add_fragrance: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
